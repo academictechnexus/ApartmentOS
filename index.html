@@ -154,7 +154,33 @@ textarea{resize:vertical;min-height:64px}
 </style>
 </head>
 <body>
-<div class="shell">
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="display:flex;min-height:100vh;align-items:center;justify-content:center;background:var(--bg)">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 40px;width:380px;max-width:95vw">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:32px;margin-bottom:8px">🏢</div>
+      <div style="font-size:22px;font-weight:700;color:var(--accent)" id="login-bname">ApartmentOS</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Building Management System</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="font-size:11px;color:var(--muted);font-weight:600">USERNAME</label>
+        <input type="text" id="login-user" placeholder="admin / supervisor" style="margin-top:4px"/>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--muted);font-weight:600">PASSWORD</label>
+        <input type="password" id="login-pass" placeholder="Enter password" style="margin-top:4px" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px;padding:11px" onclick="doLogin()">&#128274; Login</button>
+      <p id="login-err" style="color:var(--danger);font-size:12px;text-align:center;display:none">Invalid username or password</p>
+    </div>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);text-align:center;font-size:11px;color:var(--muted)">
+      Default: admin / admin123 &nbsp;|&nbsp; Change in Settings
+    </div>
+  </div>
+</div>
+
+<div class="shell" id="main-shell" style="display:none">
 
 <!-- ══ SIDEBAR ══════════════════════════════════════════════ -->
 <nav class="sidebar">
@@ -180,8 +206,53 @@ textarea{resize:vertical;min-height:64px}
   <div class="nav-section">Operations</div>
   <button class="nav-item" onclick="showPage('maintenance')"><span class="icon">🔧</span><span>Maintenance</span><span class="badge" id="badge-maint" style="display:none">0</span></button>
   <button class="nav-item" onclick="showPage('notices')"><span class="icon">📢</span><span>Notices</span></button>
-  <button class="nav-item" onclick="showPage('settings')"><span class="icon">⚙️</span><span>Settings</span></button>
+  <button class="nav-item" onclick="showPage('settings')"><span class="icon">&#9881;&#65039;</span><span>Settings</span></button>
+  <button class="nav-item" onclick="openModal('modal-supervisor')"><span class="icon">&#128101;</span><span>Staff Accounts</span></button>
+  <button class="nav-item" onclick="doLogout()" style="margin-top:auto"><span class="icon">&#128682;</span><span id="logout-label">Logout</span></button>
 </nav>
+
+<!-- MOBILE BOTTOM NAV -->
+<div class="mob-nav">
+  <div class="mob-nav-inner">
+    <button class="mob-btn active" onclick="showPage('dashboard');setMobActive(this)">
+      <span class="mic">&#127968;</span><span>Home</span>
+    </button>
+    <button class="mob-btn" onclick="showPage('tenants');setMobActive(this)">
+      <span class="mic">&#128101;</span><span>Tenants</span>
+    </button>
+    <button class="mob-btn" onclick="showPage('maintenance-fee');setMobActive(this)">
+      <span class="mic">&#128176;</span><span>Fees</span>
+    </button>
+    <button class="mob-btn" onclick="showPage('upi-payments');setMobActive(this)">
+      <span class="mic">&#128242;</span><span>UPI</span>
+    </button>
+    <button class="mob-btn" onclick="showPage('water-level');setMobActive(this)">
+      <span class="mic">&#128167;</span><span>Water</span>
+    </button>
+    <button class="mob-btn" onclick="showMobMenu()">
+      <span class="mic">&#9776;</span><span>More</span>
+    </button>
+  </div>
+</div>
+
+<!-- FAB for quick add -->
+<button class="mob-fab" id="mob-fab" onclick="mobFabAction()" title="Quick Add">&#43;</button>
+
+<!-- MOBILE MORE MENU -->
+<div id="mob-more-menu" style="display:none;position:fixed;bottom:70px;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:55;padding:12px;border-radius:16px 16px 0 0">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+    <button class="mob-btn" style="background:var(--surface2);border-radius:10px;padding:12px 6px" onclick="showPage('eb-billing');hideMobMenu();setMobActive(null)"><span class="mic">&#9889;</span><span>EB Bill</span></button>
+    <button class="mob-btn" style="background:var(--surface2);border-radius:10px;padding:12px 6px" onclick="showPage('ledger');hideMobMenu();setMobActive(null)"><span class="mic">&#128218;</span><span>Ledger</span></button>
+    <button class="mob-btn" style="background:var(--surface2);border-radius:10px;padding:12px 6px" onclick="showPage('journal');hideMobMenu();setMobActive(null)"><span class="mic">&#9999;</span><span>Journal</span></button>
+    <button class="mob-btn" style="background:var(--surface2);border-radius:10px;padding:12px 6px" onclick="showPage('profit-loss');hideMobMenu();setMobActive(null)"><span class="mic">&#128202;</span><span>P&L</span></button>
+    <button class="mob-btn" style="background:var(--surface2);border-radius:10px;padding:12px 6px" onclick="showPage('maintenance');hideMobMenu();setMobActive(null)"><span class="mic">&#128295;</span><span>Tickets</span></button>
+    <button class="mob-btn" style="background:var(--surface2);border-radius:10px;padding:12px 6px" onclick="showPage('notices');hideMobMenu();setMobActive(null)"><span class="mic">&#128226;</span><span>Notices</span></button>
+    <button class="mob-btn" style="background:var(--surface2);border-radius:10px;padding:12px 6px" onclick="showPage('nonpayers');hideMobMenu();setMobActive(null)"><span class="mic">&#128680;</span><span>Non-Pay</span></button>
+    <button class="mob-btn" style="background:var(--surface2);border-radius:10px;padding:12px 6px" onclick="showPage('balance-sheet');hideMobMenu();setMobActive(null)"><span class="mic">&#9878;</span><span>Bal Sheet</span></button>
+    <button class="mob-btn" style="background:var(--surface2);border-radius:10px;padding:12px 6px" onclick="showPage('settings');hideMobMenu();setMobActive(null)"><span class="mic">&#9881;</span><span>Settings</span></button>
+  </div>
+  <button class="btn btn-outline" style="width:100%;margin-top:10px" onclick="hideMobMenu()">Close</button>
+</div>
 
 <!-- ══ MAIN ══════════════════════════════════════════════════ -->
 <div class="main">
@@ -246,7 +317,7 @@ textarea{resize:vertical;min-height:64px}
         </div>
         <div class="panel-body" style="padding:0">
           <table class="tbl">
-            <thead><tr><th>Flat</th><th>Name</th><th>Phone</th><th>Move-in</th><th>Rent</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Flat</th><th>Name</th><th>Phone</th><th>Move-in</th><th>Rent</th><th>Members</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody id="tenant-body"></tbody>
           </table>
         </div>
@@ -493,28 +564,114 @@ textarea{resize:vertical;min-height:64px}
 
   </div><!-- /content -->
 </div><!-- /main -->
-</div><!-- /shell -->
+</div><!-- /main-shell -->
+
+
+    <!-- ══ REPORTS / QUICK SEARCH ═══════════════════════════ -->
+    <div class="page" id="page-reports">
+      <div class="panel">
+        <div class="panel-header"><h2>&#128269; Quick Search — Tenant / Flat Report</h2></div>
+        <div class="panel-body">
+          <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+            <input id="rep-search" class="search-bar" placeholder="Type flat no. or tenant name..." oninput="runReport(this.value)" style="flex:1;min-width:200px;font-size:15px;padding:10px 14px"/>
+            <button class="btn btn-outline" onclick="runReport('');document.getElementById('rep-search').value=''">Clear</button>
+            <button class="btn btn-primary" onclick="exportFullReport()">&#128196; Export Full Report</button>
+          </div>
+          <div id="rep-result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CUSTOM FIELDS ════════════════════════════════════ -->
+    <div class="page" id="page-custom-fields">
+      <div class="notice"><strong>Custom Fields</strong> — Add any extra fields you want to collect for every tenant. These fields appear in the Add/Edit Tenant form and in tenant reports.</div>
+      <div class="panel">
+        <div class="panel-header"><h2>&#9998; Manage Custom Fields</h2></div>
+        <div class="panel-body">
+          <div style="margin-bottom:16px">
+            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:10px">ADD NEW FIELD</div>
+            <div class="form-grid" style="margin-bottom:12px">
+              <div class="form-group"><label>Field Label</label><input id="cf-label" placeholder="e.g. Gas Connection No., Intercom, Pet Name"/></div>
+              <div class="form-group"><label>Field Type</label>
+                <select id="cf-type">
+                  <option value="text">Text</option>
+                  <option value="number">Number</option>
+                  <option value="yesno">Yes / No</option>
+                  <option value="date">Date</option>
+                  <option value="select">Dropdown (you define options)</option>
+                </select>
+              </div>
+              <div class="form-group" id="cf-options-wrap" style="display:none"><label>Dropdown Options (comma separated)</label><input id="cf-options" placeholder="Option1, Option2, Option3"/></div>
+              <div class="form-group"><label>Required?</label>
+                <select id="cf-required"><option value="no">No</option><option value="yes">Yes</option></select>
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="addCustomField()">+ Add Field</button>
+          </div>
+          <div style="border-top:1px solid var(--border);padding-top:14px">
+            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:10px">EXISTING CUSTOM FIELDS</div>
+            <div id="cf-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
 <!-- ══ MODALS ════════════════════════════════════════════════ -->
 
 <!-- Add Tenant -->
 <div class="modal-overlay" id="modal-add-tenant">
-  <div class="modal">
-    <h2>👤 Add / Edit Tenant</h2>
+  <div class="modal" style="width:680px">
+    <h2>&#128100; Add / Edit Tenant</h2>
     <input type="hidden" id="edit-tenant-id"/>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Basic Info</div>
     <div class="form-grid">
-      <div class="form-group"><label>Flat No.</label><input id="t-flat" placeholder="A-101"/></div>
+      <div class="form-group"><label>Flat No. *</label><input id="t-flat" placeholder="A-101"/></div>
       <div class="form-group"><label>Floor</label><input id="t-floor" placeholder="1st Floor"/></div>
-      <div class="form-group"><label>Full Name</label><input id="t-name" placeholder="Tenant name"/></div>
-      <div class="form-group"><label>Phone</label><input id="t-phone" placeholder="9876543210"/></div>
+      <div class="form-group"><label>Full Name *</label><input id="t-name" placeholder="Tenant full name"/></div>
+      <div class="form-group"><label>Phone *</label><input id="t-phone" placeholder="9876543210"/></div>
+      <div class="form-group"><label>Alternate Phone</label><input id="t-phone2" placeholder="Alt phone"/></div>
       <div class="form-group"><label>Email</label><input type="email" id="t-email" placeholder="email@example.com"/></div>
-      <div class="form-group"><label>ID Proof No.</label><input id="t-id" placeholder="Aadhaar / Passport"/></div>
-      <div class="form-group"><label>Move-in Date</label><input type="date" id="t-movein"/></div>
-      <div class="form-group"><label>Monthly Rent (₹)</label><input type="number" id="t-rent" placeholder="12000"/></div>
-      <div class="form-group"><label>Members</label><input type="number" id="t-members" placeholder="3"/></div>
-      <div class="form-group"><label>Vehicle No.</label><input id="t-vehicle" placeholder="TN01AB1234"/></div>
-      <div class="form-group full"><label>Notes</label><textarea id="t-notes" placeholder="Any notes…"></textarea></div>
+      <div class="form-group"><label>Date of Birth</label><input type="date" id="t-dob"/></div>
+      <div class="form-group"><label>Occupation</label><input id="t-occupation" placeholder="e.g. Engineer, Business"/></div>
     </div>
+    <div style="font-size:11px;color:var(--muted);margin:12px 0 8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">ID & Documents</div>
+    <div class="form-grid">
+      <div class="form-group"><label>ID Type</label>
+        <select id="t-id-type"><option>Aadhaar</option><option>Passport</option><option>Driving License</option><option>Voter ID</option><option>PAN Card</option></select>
+      </div>
+      <div class="form-group"><label>ID Number</label><input id="t-id" placeholder="ID proof number"/></div>
+      <div class="form-group"><label>Emergency Contact Name</label><input id="t-emg-name" placeholder="Name"/></div>
+      <div class="form-group"><label>Emergency Contact Phone</label><input id="t-emg-phone" placeholder="Phone"/></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin:12px 0 8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Tenancy Details</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Move-in Date</label><input type="date" id="t-movein"/></div>
+      <div class="form-group"><label>Lease End Date</label><input type="date" id="t-leaseend"/></div>
+      <div class="form-group"><label>Monthly Rent (&#8377;)</label><input type="number" id="t-rent" placeholder="12000"/></div>
+      <div class="form-group"><label>Security Deposit (&#8377;)</label><input type="number" id="t-deposit" placeholder="24000"/></div>
+      <div class="form-group"><label>No. of Members</label><input type="number" id="t-members" placeholder="3"/></div>
+      <div class="form-group"><label>Tenant Type</label>
+        <select id="t-type"><option>Family</option><option>Bachelor</option><option>Company Lease</option><option>Short Stay</option></select>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin:12px 0 8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Vehicles & Pets</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Vehicle 1 No.</label><input id="t-vehicle" placeholder="TN01AB1234"/></div>
+      <div class="form-group"><label>Vehicle 2 No.</label><input id="t-vehicle2" placeholder="TN01CD5678"/></div>
+      <div class="form-group"><label>Vehicle Type</label>
+        <select id="t-vehicle-type"><option>None</option><option>2-Wheeler</option><option>4-Wheeler</option><option>Both</option></select>
+      </div>
+      <div class="form-group"><label>Pets</label>
+        <select id="t-pets"><option>None</option><option>Dog</option><option>Cat</option><option>Other</option></select>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin:12px 0 8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Address & Notes</div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Permanent / Native Address</label><textarea id="t-permaddr" placeholder="Permanent address of tenant"></textarea></div>
+      <div class="form-group full"><label>Admin Notes</label><textarea id="t-notes" placeholder="Any special notes, observations..."></textarea></div>
+    </div>
+    <!-- Dynamic custom fields injected here -->
+    <div id="tenant-custom-fields"></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-add-tenant')">Cancel</button>
       <button class="btn btn-primary" onclick="saveTenant()">Save Tenant</button>
@@ -665,6 +822,38 @@ textarea{resize:vertical;min-height:64px}
   </div>
 </div>
 
+<!-- SUPERVISOR MODAL -->
+<div class="modal-overlay" id="modal-supervisor">
+  <div class="modal">
+    <h2>&#128272; Staff / Supervisor Accounts</h2>
+    <div id="staff-list" style="margin-bottom:16px"></div>
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+      <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:10px">ADD NEW STAFF</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Name</label><input id="sf-name" placeholder="Staff name"/></div>
+        <div class="form-group"><label>Role</label>
+          <select id="sf-role"><option value="supervisor">Supervisor</option><option value="accountant">Accountant</option><option value="security">Security</option><option value="maintenance">Maintenance Staff</option></select>
+        </div>
+        <div class="form-group"><label>Username</label><input id="sf-user" placeholder="e.g. supervisor1"/></div>
+        <div class="form-group"><label>Password</label><input type="password" id="sf-pass" placeholder="Set password"/></div>
+        <div class="form-group"><label>Phone</label><input id="sf-phone" placeholder="9876543210"/></div>
+        <div class="form-group"><label>Access Level</label>
+          <select id="sf-access">
+            <option value="full">Full Access</option>
+            <option value="view-only">View Only</option>
+            <option value="fees-only">Fees & Payments Only</option>
+            <option value="maintenance-only">Maintenance Only</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:9px">
+        <button class="btn btn-primary" onclick="saveStaff()">Add Staff</button>
+        <button class="btn btn-outline" onclick="closeModal('modal-supervisor')">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <!-- ══ SCRIPTS ════════════════════════════════════════════════ -->
@@ -731,6 +920,8 @@ function attachListeners(){
   onValue(ref(db,'accounts'),   s=>{accounts=s.val()||{};renderLedger();renderPL();renderBS();});
   onValue(ref(db,'journal'),    s=>{journalEntries=s.val()||{};renderJournal();renderLedger();renderPL();renderBS();});
   onValue(ref(db,'settings'),   s=>{if(s.val()){settings=s.val();loadSettings();}});
+  onValue(ref(db,'staff'),        s=>{staffAccounts=s.val()||{};renderStaffList();});
+  onValue(ref(db,'customFields'), s=>{customFields=s.val()||{};renderCustomFields();buildCustomFieldsInTenantForm();});
 }
 
 // ── DB helpers ─────────────────────────────────────────────
@@ -877,15 +1068,20 @@ window.filterTenants=q=>{
 function renderTenantTable(){
   document.getElementById('tenant-body').innerHTML=Object.entries(tenants).map(([id,t])=>`
     <tr>
-      <td><strong>${t.flat}</strong></td><td>${t.name||'—'}</td><td>${t.phone||'—'}</td>
-      <td>${t.movein||'—'}</td><td>₹${(t.rent||0).toLocaleString()}</td>
+      <td><strong>${t.flat}</strong><br><span style="font-size:10px;color:var(--muted)">${t.floor||''}</span></td>
+      <td>${t.name||'—'}<br><span style="font-size:10px;color:var(--muted)">${t.tenantType||''}</span></td>
+      <td>${t.phone||'—'}<br><span style="font-size:10px;color:var(--muted)">${t.phone2||''}</span></td>
+      <td>${t.movein||'—'}<br><span style="font-size:10px;color:var(--muted)">${t.leaseEnd?'Lease ends: '+t.leaseEnd:''}</span></td>
+      <td>₹${(t.rent||0).toLocaleString()}<br><span style="font-size:10px;color:var(--muted)">Dep: ₹${(t.deposit||0).toLocaleString()}</span></td>
+      <td>${t.members||'—'}<br><span style="font-size:10px;color:var(--muted)">${t.vehicle||''}</span></td>
       <td><span class="pill ${t.status==='active'?'pill-green':'pill-warn'}">${t.status||'vacant'}</span></td>
       <td style="display:flex;gap:5px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" onclick="editTenant('${id}')">Edit</button>
-        <button class="btn btn-purple btn-sm" onclick="showUPIForTenant('${id}')">📲 QR</button>
+        <button class="btn btn-purple btn-sm" onclick="showUPIForTenant('${id}')">&#128242; QR</button>
+        <button class="btn btn-wa btn-sm" onclick="sendTenantReceipt('${id}')">&#128172; WA</button>
         <button class="btn btn-danger btn-sm" onclick="deleteTenant('${id}')">Del</button>
       </td>
-    </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No tenants yet.</td></tr>';
+    </tr>`).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">No tenants yet.</td></tr>';
 }
 window.openTenantModal=function(){
   document.getElementById('edit-tenant-id').value='';
@@ -895,21 +1091,56 @@ window.openTenantModal=function(){
 };
 window.saveTenant=function(){
   const id=v('edit-tenant-id');
-  const t={flat:v('t-flat'),floor:v('t-floor'),name:v('t-name'),phone:v('t-phone'),email:v('t-email'),idProof:v('t-id'),movein:v('t-movein'),rent:+v('t-rent')||0,members:+v('t-members')||1,vehicle:v('t-vehicle'),notes:v('t-notes'),status:v('t-name')?'active':'vacant'};
+  const t={
+    flat:v('t-flat'), floor:v('t-floor'), name:v('t-name'),
+    phone:v('t-phone'), phone2:v('t-phone2'), email:v('t-email'),
+    dob:v('t-dob'), occupation:v('t-occupation'),
+    idType:v('t-id-type'), idProof:v('t-id'),
+    emgName:v('t-emg-name'), emgPhone:v('t-emg-phone'),
+    movein:v('t-movein'), leaseEnd:v('t-leaseend'),
+    rent:+v('t-rent')||0, deposit:+v('t-deposit')||0,
+    members:+v('t-members')||1, tenantType:v('t-type'),
+    vehicle:v('t-vehicle'), vehicle2:v('t-vehicle2'),
+    vehicleType:v('t-vehicle-type'), pets:v('t-pets'),
+    permAddr:v('t-permaddr'), notes:v('t-notes'),
+    status:v('t-name')?'active':'vacant',
+    addedOn:new Date().toISOString().slice(0,10)
+  };
   if(!t.flat){toast('Flat number required','error');return;}
-  if(id){dbSet('tenants/'+id,t);}else{dbPush('tenants',t);}
-  if(demoMode){if(id)tenants[id]=t;else tenants['t'+Date.now()]=t;renderAll();}
-  closeModal('modal-add-tenant');toast('Tenant saved ✓','success');
+  if(id){dbSet('tenants/'+id,t);}else{
+    const nid='t'+Date.now();
+    if(demoMode)tenants[nid]=t;
+    dbSet('tenants/'+nid,t);
+    // Auto-generate fee for this month
+    const m=currMonth();
+    const fkey=m+'_'+nid;
+    const fee={tenantId:nid,flat:t.flat,name:t.name,amount:settings.maintenanceFee,month:m,status:'pending',dueDate:`${m}-0${settings.dueDayOfMonth||5}`};
+    if(demoMode)fees[fkey]=fee;
+    dbSet('fees/'+fkey,fee);
+    toast('Tenant added + fee generated for '+m+' ✓','success');
+  }
+  // Save custom field values
+  t.customFields = getCustomFieldValues();
+  if(id){if(demoMode){tenants[id]=t;}toast('Tenant updated ✓','success');}
+  closeModal('modal-add-tenant');
+  renderAll();
 };
 window.editTenant=function(id){
   const t=tenants[id];
-  document.getElementById('edit-tenant-id').value=id;
-  document.getElementById('t-flat').value=t.flat||'';document.getElementById('t-floor').value=t.floor||'';
-  document.getElementById('t-name').value=t.name||'';document.getElementById('t-phone').value=t.phone||'';
-  document.getElementById('t-email').value=t.email||'';document.getElementById('t-id').value=t.idProof||'';
-  document.getElementById('t-movein').value=t.movein||'';document.getElementById('t-rent').value=t.rent||'';
-  document.getElementById('t-members').value=t.members||'';document.getElementById('t-vehicle').value=t.vehicle||'';
-  document.getElementById('t-notes').value=t.notes||'';
+  const f=(eid,val)=>{const e=document.getElementById(eid);if(e)e.value=val||'';};
+  f('edit-tenant-id',id);
+  f('t-flat',t.flat);f('t-floor',t.floor);f('t-name',t.name);
+  f('t-phone',t.phone);f('t-phone2',t.phone2);f('t-email',t.email);
+  f('t-dob',t.dob);f('t-occupation',t.occupation);
+  f('t-id-type',t.idType);f('t-id',t.idProof);
+  f('t-emg-name',t.emgName);f('t-emg-phone',t.emgPhone);
+  f('t-movein',t.movein);f('t-leaseend',t.leaseEnd);
+  f('t-rent',t.rent);f('t-deposit',t.deposit);
+  f('t-members',t.members);f('t-type',t.tenantType);
+  f('t-vehicle',t.vehicle);f('t-vehicle2',t.vehicle2);
+  f('t-vehicle-type',t.vehicleType);f('t-pets',t.pets);
+  f('t-permaddr',t.permAddr);f('t-notes',t.notes);
+  setTimeout(()=>setCustomFieldValues(t.customFields||{}), 100);
   openModal('modal-add-tenant');
 };
 window.deleteTenant=function(id){
@@ -1587,6 +1818,552 @@ function downloadFile(name,content,type){const a=document.createElement('a');a.h
 function toast(msg,type='success'){const el=document.getElementById('toast');el.textContent=msg;el.className='show '+type;setTimeout(()=>el.className='',3200);}
 setInterval(()=>si('topbar-time',new Date().toLocaleTimeString()),1000);
 populateMonthSelects();
+
+// ── LOGIN SYSTEM ───────────────────────────────────────────
+let currentUser = null;
+let staffAccounts = {};
+
+function initLogin(){
+  // Set building name on login screen
+  const bn = document.getElementById('login-bname');
+  if(bn && settings.buildingName) bn.textContent = settings.buildingName;
+}
+
+window.doLogin = function(){
+  const user = document.getElementById('login-user').value.trim().toLowerCase();
+  const pass = document.getElementById('login-pass').value;
+  const err  = document.getElementById('login-err');
+  if(!user||!pass){toast('Enter username and password','error');return;}
+
+  // If Firebase connected, fetch fresh staff data then check
+  if(db && !demoMode){
+    // Show loading
+    err.style.display='none';
+    const btn = document.querySelector('#login-screen .btn-primary');
+    if(btn){btn.textContent='Checking...';btn.disabled=true;}
+
+    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js').then(({get,ref:fref})=>{
+      // Check settings for admin creds
+      get(fref(db,'settings')).then(snap=>{
+        const s = snap.val()||{};
+        const adminUser = s.adminUsername||'admin';
+        const adminPass = s.adminPassword||'admin123';
+        if(btn){btn.textContent='Login';btn.disabled=false;}
+
+        if(user===adminUser && pass===adminPass){
+          currentUser={name:'Admin',role:'admin',access:'full'};
+          showApp(); return;
+        }
+        // Check staff
+        get(fref(db,'staff')).then(ssnap=>{
+          const staffData = ssnap.val()||{};
+          const found = Object.values(staffData).find(sf=>sf.username===user&&sf.password===pass);
+          if(found){ currentUser=found; showApp(); return; }
+          err.style.display='block';
+          setTimeout(()=>err.style.display='none',3000);
+        });
+      }).catch(()=>{
+        if(btn){btn.textContent='Login';btn.disabled=false;}
+        // Fallback to cached
+        checkLoginLocal(user,pass,err);
+      });
+    });
+    return;
+  }
+
+  // Demo mode or offline — check local
+  checkLoginLocal(user, pass, err);
+};
+
+function checkLoginLocal(user, pass, err){
+  const adminUser = settings.adminUsername||'admin';
+  const adminPass = settings.adminPassword||'admin123';
+  if(user===adminUser && pass===adminPass){
+    currentUser={name:'Admin',role:'admin',access:'full'};
+    showApp(); return;
+  }
+  const found = Object.values(staffAccounts).find(s=>s.username===user&&s.password===pass);
+  if(found){ currentUser=found; showApp(); return; }
+  const errEl = err||document.getElementById('login-err');
+  if(errEl){errEl.style.display='block';setTimeout(()=>errEl.style.display='none',3000);}
+}
+
+function showApp(){
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-shell').style.display   = 'flex';
+  // Show logged in user
+  const lbl = document.getElementById('logout-label');
+  if(lbl) lbl.textContent = currentUser.name + ' (Logout)';
+  // Restrict menu if not full access
+  applyAccessControl();
+  renderAll();
+  renderCustomFields();
+  buildCustomFieldsInTenantForm();
+  runReport('');
+  toast('Welcome, ' + currentUser.name + '!', 'success');
+}
+
+window.doLogout = function(){
+  if(!confirm('Logout?')) return;
+  currentUser = null;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('main-shell').style.display   = 'none';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+};
+
+function applyAccessControl(){
+  if(!currentUser) return;
+  const access = currentUser.access || 'full';
+  if(access === 'view-only'){
+    document.querySelectorAll('.btn-primary,.btn-danger,.btn-warn').forEach(b=>{
+      if(!b.onclick?.toString().includes('showPage') && !b.onclick?.toString().includes('closeModal'))
+        b.style.display='none';
+    });
+  }
+}
+
+// ── STAFF ACCOUNTS ─────────────────────────────────────────
+window.saveStaff = function(){
+  const s = {
+    name:     document.getElementById('sf-name').value.trim(),
+    role:     document.getElementById('sf-role').value,
+    username: document.getElementById('sf-user').value.trim().toLowerCase(),
+    password: document.getElementById('sf-pass').value,
+    phone:    document.getElementById('sf-phone').value.trim(),
+    access:   document.getElementById('sf-access').value,
+  };
+  if(!s.name||!s.username||!s.password){toast('Fill name, username and password','error');return;}
+  const id = 'staff_' + Date.now();
+  staffAccounts[id] = s;
+  dbSet('staff/' + id, s);
+  ['sf-name','sf-user','sf-pass','sf-phone'].forEach(i=>document.getElementById(i).value='');
+  toast('Staff account created ✓', 'success');
+  renderStaffList();
+};
+
+function renderStaffList(){
+  const el = document.getElementById('staff-list'); if(!el) return;
+  const arr = Object.entries(staffAccounts);
+  if(!arr.length){ el.innerHTML='<p style="color:var(--muted);font-size:13px">No staff accounts yet.</p>'; return; }
+  el.innerHTML = arr.map(([id,s])=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px">
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">${s.name} <span style="color:var(--muted);font-size:11px">(${s.role})</span></div>
+        <div style="font-size:12px;color:var(--muted)">@${s.username} &nbsp;·&nbsp; ${s.access} access &nbsp;·&nbsp; ${s.phone||'—'}</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="delStaff('${id}')">Del</button>
+    </div>`).join('');
+}
+
+window.delStaff = function(id){
+  if(!confirm('Delete this staff account?'))return;
+  dbRemove('staff/'+id);
+  if(demoMode||true) delete staffAccounts[id];
+  renderStaffList();
+  toast('Staff account deleted','success');
+};
+
+// ── MARK PAID + WHATSAPP RECEIPT ──────────────────────────
+// Override markFeePaid to also send WhatsApp receipt
+const _origMarkPaid = window.markFeePaid;
+window.markFeePaid = function(key){
+  const today = new Date().toISOString().slice(0,10);
+  const f = fees[key];
+  if(!f){toast('Fee not found','error');return;}
+
+  // Mark paid in DB
+  if(demoMode){fees[key].status='paid';fees[key].paidOn=today;}
+  dbSet('fees/'+key+'/status','paid');
+  dbSet('fees/'+key+'/paidOn', today);
+
+  // Auto journal entry
+  const je={date:today,narration:`Maintenance fee received — ${f.flat} ${f.name}`,debit:'acc3',credit:'acc1',amount:f.amount,type:'income',ref:'REC-'+Date.now().toString().slice(-5)};
+  dbPush('journal',je);
+  if(demoMode){journalEntries['je'+Date.now()]=je;}
+
+  renderAll();
+  toast('Payment marked paid ✓', 'success');
+
+  // Send WhatsApp receipt
+  const t = tenants[f.tenantId] || {};
+  const phone = t.phone || '';
+  if(!phone){toast('No phone number — receipt not sent','error');return;}
+
+  const receiptNo = 'REC-' + new Date().getFullYear() + '-' + Date.now().toString().slice(-4);
+  const monthName = new Date(f.month+'-01').toLocaleString('en-IN',{month:'long',year:'numeric'});
+  
+  const msg = encodeURIComponent(
+`🧾 *PAYMENT RECEIPT*
+━━━━━━━━━━━━━━━━━━━━
+🏢 *${settings.buildingName}*
+
+Receipt No : ${receiptNo}
+Date       : ${today}
+━━━━━━━━━━━━━━━━━━━━
+Tenant     : ${f.name}
+Flat No.   : ${f.flat}
+━━━━━━━━━━━━━━━━━━━━
+💰 *PAYMENT DETAILS*
+
+Description : Maintenance Fee
+Month       : ${monthName}
+Amount      : ₹${f.amount.toLocaleString()}
+Mode        : UPI
+Status      : ✅ PAID
+━━━━━━━━━━━━━━━━━━━━
+Thank you for your payment! 🙏
+For queries: ${settings.adminPhone||'Contact Admin'}
+— ${settings.buildingName} Management`);
+
+  setTimeout(()=>{
+    window.open(`https://wa.me/91${phone}?text=${msg}`, '_blank');
+  }, 500);
+};
+
+// ── ATTACH STAFF LISTENER ─────────────────────────────────
+const _origAttach = attachListeners;
+function attachListenersWithStaff(){
+  _origAttach();
+  if(db) onValue(ref(db,'staff'), s=>{staffAccounts=s.val()||{};renderStaffList();});
+}
+
+// ── SETTINGS: add admin credentials ──────────────────────
+const _origSaveSettings = window.saveSettings;
+window.saveSettings = function(){
+  const adminUser = document.getElementById('set-admin-user')?.value||'admin';
+  const adminPass = document.getElementById('set-admin-pass')?.value||'admin123';
+  _origSaveSettings();
+  settings.adminUsername = adminUser;
+  settings.adminPassword = adminPass;
+  dbSet('settings/adminUsername', adminUser);
+  dbSet('settings/adminPassword', adminPass);
+  toast('Settings saved ✓','success');
+};
+
+// ── SEND RECEIPT TO ANY TENANT ───────────────────────────
+window.sendTenantReceipt = function(tenantId){
+  const t = tenants[tenantId]; if(!t||!t.phone){toast('No phone number','error');return;}
+  const m = currMonth();
+  const f = Object.values(fees).find(f=>f.tenantId===tenantId&&f.month===m);
+  const monthName = new Date(m+'-01').toLocaleString('en-IN',{month:'long',year:'numeric'});
+  const status = f?.status==='paid' ? '✅ PAID' : '⏳ PENDING';
+  const msg = encodeURIComponent(
+`🧾 *PAYMENT STATUS — ${monthName}*
+━━━━━━━━━━━━━━━━━━━━
+🏢 *${settings.buildingName}*
+
+Tenant  : ${t.name}
+Flat    : ${t.flat}
+Month   : ${monthName}
+Amount  : ₹${(f?.amount||settings.maintenanceFee).toLocaleString()}
+Status  : ${status}
+━━━━━━━━━━━━━━━━━━━━
+${f?.status==='paid'?'Thank you for your payment! 🙏':'Please pay at the earliest. For UPI payment, contact admin.'}
+— ${settings.buildingName} Management`);
+  window.open(`https://wa.me/91${t.phone}?text=${msg}`,'_blank');
+};
+
+// ── ATTACH STAFF FIREBASE LISTENER ───────────────────────
+function listenToStaff(){
+  if(!db) return;
+  try {
+    onValue(ref(db,'staff'), s=>{staffAccounts=s.val()||{};renderStaffList();});
+  } catch(e){}
+}
+
+// ── CUSTOM FIELDS ─────────────────────────────────────────
+let customFields = {};
+
+window.addCustomField = function(){
+  const label = document.getElementById('cf-label').value.trim();
+  const type  = document.getElementById('cf-type').value;
+  const opts  = document.getElementById('cf-options').value.trim();
+  const req   = document.getElementById('cf-required').value;
+  if(!label){toast('Enter field label','error');return;}
+  const id = 'cf_' + Date.now();
+  const field = {label, type, options: opts, required: req, order: Object.keys(customFields).length};
+  customFields[id] = field;
+  dbSet('customFields/' + id, field);
+  document.getElementById('cf-label').value = '';
+  document.getElementById('cf-options').value = '';
+  toast('Custom field added ✓','success');
+  renderCustomFields();
+  // rebuild tenant modal custom section
+  buildCustomFieldsInTenantForm();
+};
+
+document.getElementById('cf-type')?.addEventListener('change', function(){
+  const wrap = document.getElementById('cf-options-wrap');
+  if(wrap) wrap.style.display = this.value === 'select' ? '' : 'none';
+});
+
+function renderCustomFields(){
+  const el = document.getElementById('cf-list'); if(!el) return;
+  const arr = Object.entries(customFields).sort((a,b)=>(a[1].order||0)-(b[1].order||0));
+  if(!arr.length){el.innerHTML='<p style="color:var(--muted);font-size:13px">No custom fields yet. Add your first one above.</p>';return;}
+  el.innerHTML = arr.map(([id,f])=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px">
+      <div style="flex:1">
+        <span style="font-weight:600;font-size:13px">${f.label}</span>
+        <span class="pill pill-blue" style="margin-left:8px">${f.type}</span>
+        ${f.required==='yes'?'<span class="pill pill-red" style="margin-left:4px">Required</span>':''}
+        ${f.options?'<div style="font-size:11px;color:var(--muted);margin-top:3px">Options: '+f.options+'</div>':''}
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="delCustomField('${id}')">Del</button>
+    </div>`).join('');
+  buildCustomFieldsInTenantForm();
+}
+
+window.delCustomField = function(id){
+  if(!confirm('Delete this custom field? Existing tenant data for this field will remain.'))return;
+  dbRemove('customFields/'+id);
+  delete customFields[id];
+  renderCustomFields();
+  toast('Field deleted','success');
+};
+
+function buildCustomFieldsInTenantForm(){
+  // Inject custom fields at bottom of tenant modal before the notes section
+  const container = document.getElementById('tenant-custom-fields');
+  if(!container) return;
+  const arr = Object.entries(customFields).sort((a,b)=>(a[1].order||0)-(b[1].order||0));
+  if(!arr.length){container.innerHTML='';return;}
+  container.innerHTML = `
+    <div style="font-size:11px;color:var(--muted);margin:12px 0 8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Custom Fields</div>
+    <div class="form-grid">
+      ${arr.map(([id,f])=>`
+        <div class="form-group ${f.type==='text'&&f.label.length>20?'full':''}">
+          <label>${f.label}${f.required==='yes'?' *':''}</label>
+          ${f.type==='yesno'
+            ? `<select id="tcf_${id}"><option value="">Select</option><option value="Yes">Yes</option><option value="No">No</option></select>`
+            : f.type==='select'
+            ? `<select id="tcf_${id}"><option value="">Select</option>${(f.options||'').split(',').map(o=>`<option>${o.trim()}</option>`).join('')}</select>`
+            : f.type==='date'
+            ? `<input type="date" id="tcf_${id}"/>`
+            : f.type==='number'
+            ? `<input type="number" id="tcf_${id}" placeholder="${f.label}"/>`
+            : `<input type="text" id="tcf_${id}" placeholder="${f.label}"/>`
+          }
+        </div>`).join('')}
+    </div>`;
+}
+
+// ── SAVE/LOAD CUSTOM FIELD VALUES FOR TENANT ─────────────
+function getCustomFieldValues(){
+  const vals = {};
+  Object.keys(customFields).forEach(id=>{
+    const el = document.getElementById('tcf_'+id);
+    if(el) vals[id] = el.value;
+  });
+  return vals;
+}
+function setCustomFieldValues(vals){
+  if(!vals) return;
+  Object.keys(customFields).forEach(id=>{
+    const el = document.getElementById('tcf_'+id);
+    if(el && vals[id] !== undefined) el.value = vals[id];
+  });
+}
+
+// ── QUICK REPORT ───────────────────────────────────────────
+window.runReport = function(q){
+  const el = document.getElementById('rep-result'); if(!el) return;
+  q = (q||'').toLowerCase().trim();
+  
+  if(!q){
+    // Show all tenants summary
+    const arr = Object.values(tenants);
+    el.innerHTML = `<div style="color:var(--muted);font-size:13px;margin-bottom:12px">${arr.length} tenants total — type a name or flat to see full details</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+      ${arr.map(t=>`
+        <div onclick="document.getElementById('rep-search').value='${t.flat}';runReport('${t.flat}')" 
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer">
+          <div style="font-weight:700;color:var(--accent)">${t.flat}</div>
+          <div style="font-size:13px">${t.name||'Vacant'}</div>
+          <div style="font-size:11px;color:var(--muted)">${t.phone||'—'}</div>
+          <span class="pill ${t.status==='active'?'pill-green':'pill-warn'}" style="margin-top:6px;display:inline-block">${t.status}</span>
+        </div>`).join('')}
+    </div>`;
+    return;
+  }
+
+  // Search by flat or name
+  const matches = Object.entries(tenants).filter(([,t])=>
+    (t.flat||'').toLowerCase().includes(q) ||
+    (t.name||'').toLowerCase().includes(q) ||
+    (t.phone||'').includes(q)
+  );
+
+  if(!matches.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:30px">No tenant found matching "'+q+'"</p>';return;}
+
+  el.innerHTML = matches.map(([id,t])=>{
+    const m = currMonth();
+    const fee = Object.values(fees).find(f=>f.tenantId===id && f.month===m);
+    const allFees = Object.values(fees).filter(f=>f.tenantId===id);
+    const totalPaid = allFees.filter(f=>f.status==='paid').reduce((s,f)=>s+f.amount,0);
+    const pending = allFees.filter(f=>f.status==='pending').reduce((s,f)=>s+f.amount,0);
+    const ebList = Object.values(ebReadings).filter(r=>r.flat===t.flat).slice(-3);
+    const tktList = Object.values(tickets).filter(tk=>tk.flat===t.flat);
+    const cfVals = t.customFields || {};
+
+    // Build custom fields display
+    const cfDisplay = Object.entries(customFields).map(([cfid,cf])=>`
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(48,54,61,.3)">
+        <span style="color:var(--muted);font-size:12px">${cf.label}</span>
+        <span style="font-size:12px;font-weight:500">${cfVals[cfid]||'—'}</span>
+      </div>`).join('');
+
+    return `<div class="panel" style="margin-bottom:16px">
+      <!-- HEADER -->
+      <div style="background:linear-gradient(135deg,rgba(63,185,80,.1),rgba(88,166,255,.08));padding:16px 18px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:22px;font-weight:700;color:var(--accent)">${t.flat}</div>
+            <div style="font-size:16px;font-weight:600;margin-top:2px">${t.name||'Vacant'}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">${t.tenantType||''} ${t.floor?'· '+t.floor+' Floor':''}</div>
+          </div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <span class="pill ${t.status==='active'?'pill-green':'pill-warn'}">${t.status}</span>
+            <button class="btn btn-outline btn-sm" onclick="editTenant('${id}')">&#9998; Edit</button>
+            <button class="btn btn-wa btn-sm" onclick="sendTenantReceipt('${id}')">&#128172; WA</button>
+            <button class="btn btn-purple btn-sm" onclick="showUPIForTenant('${id}')">&#128242; QR</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+        <!-- LEFT COL -->
+        <div>
+          <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Contact</div>
+          ${row('Phone',t.phone)} ${row('Alt Phone',t.phone2)} ${row('Email',t.email)} ${row('Emergency',t.emgName+(t.emgPhone?' · '+t.emgPhone:''))}
+          
+          <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Personal</div>
+          ${row('DOB',t.dob)} ${row('Occupation',t.occupation)} ${row('ID',t.idType+' · '+(t.idProof||'—'))}
+          
+          <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Tenancy</div>
+          ${row('Move-in',t.movein)} ${row('Lease End',t.leaseEnd)} ${row('Rent','₹'+(t.rent||0).toLocaleString()+'/month')} ${row('Deposit','₹'+(t.deposit||0).toLocaleString())} ${row('Members',t.members)} ${row('Vehicles',t.vehicle+(t.vehicle2?' / '+t.vehicle2:''))} ${row('Pets',t.pets)}
+          ${cfDisplay ? `<div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Custom Fields</div>${cfDisplay}` : ''}
+          ${t.notes?`<div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Notes</div><div style="font-size:12px;color:var(--muted);line-height:1.6">${t.notes}</div>`:''}
+        </div>
+
+        <!-- RIGHT COL -->
+        <div>
+          <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Payment Summary</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+            <div style="background:rgba(63,185,80,.1);border-radius:8px;padding:10px;text-align:center">
+              <div style="font-size:10px;color:var(--muted)">TOTAL PAID</div>
+              <div style="font-size:18px;font-weight:700;color:var(--accent);font-family:var(--mono)">₹${totalPaid.toLocaleString()}</div>
+            </div>
+            <div style="background:rgba(248,81,73,.1);border-radius:8px;padding:10px;text-align:center">
+              <div style="font-size:10px;color:var(--muted)">PENDING</div>
+              <div style="font-size:18px;font-weight:700;color:var(--danger);font-family:var(--mono)">₹${pending.toLocaleString()}</div>
+            </div>
+          </div>
+
+          <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">This Month (${m})</div>
+          <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:12px">
+            ${fee ? `<div style="display:flex;justify-content:space-between"><span>Maintenance Fee</span><span class="pill ${fee.status==='paid'?'pill-green':'pill-red'}">${fee.status}</span></div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">Due: ${fee.dueDate} ${fee.paidOn?'· Paid: '+fee.paidOn:''}</div>` 
+            : '<div style="color:var(--muted);font-size:12px">No fee record for this month</div>'}
+          </div>
+
+          <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Fee History</div>
+          <div style="max-height:140px;overflow-y:auto">
+            ${allFees.length ? allFees.sort((a,b)=>b.month>a.month?1:-1).slice(0,6).map(f=>`
+              <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(48,54,61,.3);font-size:12px">
+                <span>${f.month}</span>
+                <span>₹${f.amount.toLocaleString()}</span>
+                <span class="pill ${f.status==='paid'?'pill-green':'pill-red'}" style="font-size:9px">${f.status}</span>
+              </div>`).join('') : '<div style="color:var(--muted);font-size:12px">No fee history</div>'}
+          </div>
+
+          ${ebList.length ? `<div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">EB Bill History</div>
+          ${ebList.map(r=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(48,54,61,.3);font-size:12px">
+            <span>${r.month}</span><span>${r.units} units</span><span>₹${r.amount.toLocaleString()}</span>
+            <span class="pill ${r.status==='paid'?'pill-green':'pill-red'}" style="font-size:9px">${r.status}</span></div>`).join('')}` : ''}
+
+          ${tktList.length ? `<div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Maintenance Tickets (${tktList.length})</div>
+          ${tktList.slice(0,3).map(tk=>`<div style="padding:5px 0;border-bottom:1px solid rgba(48,54,61,.3);font-size:12px">
+            <span class="pill ${tk.status==='resolved'?'pill-green':tk.status==='open'?'pill-red':'pill-warn'}" style="font-size:9px">${tk.status}</span>
+            <span style="margin-left:6px">${tk.title}</span></div>`).join('')}` : ''}
+        </div>
+
+      </div>
+    </div>`;
+  }).join('');
+};
+
+function row(label, val){
+  if(!val||val==='—'||val==='undefined'||val==='null') return '';
+  return `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(48,54,61,.3)">
+    <span style="color:var(--muted);font-size:12px">${label}</span>
+    <span style="font-size:12px;font-weight:500;text-align:right;max-width:60%">${val}</span>
+  </div>`;
+}
+
+window.exportFullReport = function(){
+  let csv = 'Flat,Name,Phone,Alt Phone,Email,DOB,Occupation,ID Type,ID No,Emergency Name,Emergency Phone,Move-in,Lease End,Rent,Deposit,Members,Tenant Type,Vehicle1,Vehicle2,Pets,Perm Address,Notes,Status';
+  // Add custom field headers
+  const cfArr = Object.entries(customFields).sort((a,b)=>(a[1].order||0)-(b[1].order||0));
+  cfArr.forEach(([,cf])=>{ csv += ',' + cf.label; });
+  csv += '
+';
+  Object.values(tenants).forEach(t=>{
+    const cfVals = t.customFields || {};
+    const cfData = cfArr.map(([id])=>'"'+(cfVals[id]||'')+'"').join(',');
+    csv += `"${t.flat}","${t.name||''}","${t.phone||''}","${t.phone2||''}","${t.email||''}","${t.dob||''}","${t.occupation||''}","${t.idType||''}","${t.idProof||''}","${t.emgName||''}","${t.emgPhone||''}","${t.movein||''}","${t.leaseEnd||''}","${t.rent||0}","${t.deposit||0}","${t.members||''}","${t.tenantType||''}","${t.vehicle||''}","${t.vehicle2||''}","${t.pets||''}","${(t.permAddr||'').replace(/
+/g,' ')}","${(t.notes||'').replace(/
+/g,' ')}","${t.status||''}"${cfData?','+cfData:''}
+`;
+  });
+  downloadFile('tenant_report_'+currMonth()+'.csv', csv, 'text/csv');
+};
+
+// ── MOBILE NAV HELPERS ─────────────────────────────────────
+window.setMobActive = function(el){
+  document.querySelectorAll('.mob-btn').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+};
+window.showMobMenu = function(){
+  const m = document.getElementById('mob-more-menu');
+  if(m) m.style.display = m.style.display==='none'?'block':'none';
+};
+window.hideMobMenu = function(){
+  const m = document.getElementById('mob-more-menu');
+  if(m) m.style.display = 'none';
+};
+window.mobFabAction = function(){
+  const active = document.querySelector('.page.active');
+  if(!active) return;
+  const id = active.id;
+  if(id==='page-tenants') openTenantModal();
+  else if(id==='page-maintenance-fee') generateMonthFees();
+  else if(id==='page-maintenance') openModal('modal-add-ticket');
+  else if(id==='page-notices') openModal('modal-add-notice');
+  else if(id==='page-eb-billing') openModal('modal-eb-reading');
+  else if(id==='page-journal') openModal('modal-journal-entry');
+  else if(id==='page-water-level') openModal('modal-add-tank');
+  else openTenantModal();
+};
+
+// Listen for custom fields in Firebase
+function listenCustomFields(){
+  if(!db) return;
+  try{ onValue(ref(db,'customFields'), s=>{customFields=s.val()||{};renderCustomFields();buildCustomFieldsInTenantForm();}); }catch(e){}
+}
+
+// Show login on load
+document.addEventListener('DOMContentLoaded', function(){
+  // if firebase keys present, try connect then show login
+  const k = document.getElementById('fb-apiKey')?.value?.trim();
+  const u = document.getElementById('fb-dbURL')?.value?.trim();
+  if(k && u){
+    setTimeout(connectFirebase, 800);
+  }
+  initLogin();
+});
 </script>
 </body>
 </html>
