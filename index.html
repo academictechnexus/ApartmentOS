@@ -198,14 +198,13 @@ textarea{resize:vertical;min-height:64px}
     <!-- Firebase Banner -->
     <div id="config-banner">
       <h3>🔥 Connect Firebase for live sync across all devices</h3>
-      <p>Enter your Firebase Realtime Database credentials below. Or use Demo Mode to explore with sample data.</p>
+      <p>Your Firebase project is pre-configured. Just click <strong>Connect Firebase</strong> — or add your <strong>databaseURL</strong> below first if not already set.</p>
       <div class="config-grid">
-        apiKey: "AIzaSyCgrg2XQ3sIfstU_7va84dNi8_87ikx_1U",
-  authDomain: "apartment-2546a.firebaseapp.com",
-  projectId: "apartment-2546a",
-  storageBucket: "apartment-2546a.firebasestorage.app",
-  messagingSenderId: "906202157175",
-  appId: "1:906202157175:web:3ccedd5f5bf403d24d3672"
+        <input id="fb-apiKey"       value="AIzaSyCgrg2XQ3sIfstU_7va84dNi8_87ikx_1U" placeholder="apiKey"/>
+        <input id="fb-authDomain"   value="apartment-2546a.firebaseapp.com" placeholder="authDomain"/>
+        <input id="fb-dbURL"        value="https://apartment-2546a-default-rtdb.firebaseio.com" placeholder="databaseURL  (https://xxx-default-rtdb.firebaseio.com)"/>
+        <input id="fb-projectId"    value="apartment-2546a" placeholder="projectId"/>
+        <input id="fb-appId"        value="1:906202157175:web:3ccedd5f5bf403d24d3672" placeholder="appId" style="grid-column:1/-1"/>
       </div>
       <div style="margin-top:11px;display:flex;gap:9px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="connectFirebase()">🔗 Connect Firebase</button>
@@ -701,6 +700,12 @@ window.useDemoMode = function(){
   seedDemo();
   toast('🧪 Demo mode active','success');
 };
+// Auto-connect on page load
+setTimeout(function(){
+  var k=document.getElementById('fb-apiKey').value.trim();
+  var u=document.getElementById('fb-dbURL').value.trim();
+  if(k && u){ connectFirebase(); }
+},600);
 function attachListeners(){
   onValue(ref(db,'tenants'),    s=>{tenants=s.val()||{};renderAll();});
   onValue(ref(db,'fees'),       s=>{fees=s.val()||{};renderAll();});
