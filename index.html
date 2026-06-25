@@ -1059,4 +1059,534 @@ window.downloadQR=function(){
 window.showUPIForTenant=function(id){
   const t=tenants[id];
   if(!settings.upiId){toast('Set UPI ID in Settings first','error');return;}
-  const link=makeUPILink(settings.maintenanceFee,`Maintenance Fee ${t.fl
+  const link=makeUPILink(settings.maintenanceFee,`Maintenance Fee ${t.flat} ${t.name} ${currMonth()}`);
+  openUPIModal(link, t, settings.maintenanceFee);
+};
+window.showUPIForFee=function(key){
+  const f=fees[key];if(!f)return;
+  if(!settings.upiId){toast('Set UPI ID in Settings first','error');return;}
+  const t=tenants[f.tenantId]||{name:f.name,phone:''};
+  const link=makeUPILink(f.amount,`Maintenance Fee ${f.flat} ${f.name} ${f.month}`);
+  openUPIModal(link, t, f.amount);
+};
+function openUPIModal(link, t, amount){
+  currentQRUpiLink=link; currentQRTenant=t;
+  document.getElementById('modal-qr-info').textContent=`${t.name} — ₹${amount}`;
+  document.getElementById('modal-upi-link').textContent=link;
+  const canvas=document.getElementById('modal-qr-canvas');
+  canvas.innerHTML='';
+  new QRCode(canvas,{text:link,width:200,height:200,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M});
+  openModal('modal-upi-qr');
+}
+window.modalShareWhatsApp=function(){
+  const t=currentQRTenant;
+  if(!t||!t.phone){toast('No phone number for this tenant','error');return;}
+  const msg=encodeURIComponent(`Dear ${t.name},\n\nPlease pay your maintenance fee.\n\n📲 Pay via UPI:\n${currentQRUpiLink}\n\n— ${settings.buildingName} Management`);
+  window.open(`https://wa.me/91${t.phone}?text=${msg}`,'_blank');
+};
+window.sendFeeReminder=function(key){
+  const f=fees[key]; if(!f)return;
+  const t=tenants[f.tenantId]||{};
+  if(!t.phone){toast('No phone number','error');return;}
+  const link=makeUPILink(f.amount,`Maintenance Fee ${f.flat} ${f.name} ${f.month}`);
+  const msg=encodeURIComponent(`Dear ${f.name},\n\nReminder: Your maintenance fee of ₹${f.amount} for ${f.month} is due by ${f.dueDate}.\n\n📲 Pay via UPI:\n${link}\n\n— ${settings.buildingName} Management`);
+  window.open(`https://wa.me/91${t.phone}?text=${msg}`,'_blank');
+};
+window.openBulkUPIModal=function(){
+  const m=document.getElementById('fee-month-select')?.value||currMonth();
+  const np=Object.values(fees).filter(f=>f.month===m&&f.status==='pending');
+  if(!np.length){toast('No pending fees!','success');return;}
+  np.forEach((f,i)=>{
+    const ph=tenants[f.tenantId]?.phone; if(!ph)return;
+    const link=makeUPILink(f.amount,`Maintenance Fee ${f.flat} ${f.name} ${m}`);
+    const msg=encodeURIComponent(`Dear ${f.name},\n\nYour maintenance fee of ₹${f.amount} for ${m} is due by ${f.dueDate}.\n\n📲 Pay via UPI:\n${link}\n\n— ${settings.buildingName} Management`);
+    setTimeout(()=>window.open(`https://wa.me/91${ph}?text=${msg}`,'_blank'),i*900);
+  });
+  toast(`Sending WhatsApp to ${np.length} tenants...`,'success');
+};
+window.copyAllUPILinks=function(){
+  const m=document.getElementById('remind-month-sel')?.value||currMonth();
+  const np=Object.values(fees).filter(f=>f.month===m&&f.status==='pending');
+  const text=np.map(f=>`${f.flat} ${f.name}: ${makeUPILink(f.amount,'Maintenance Fee '+f.month)}`).join('\n');
+  navigator.clipboard?.writeText(text);
+  toast('UPI links copied!','success');
+};
+window.startBulkReminder=function(){
+  const m=document.getElementById('remind-month-sel')?.value||currMonth();
+  const np=Object.values(fees).filter(f=>f.month===m&&f.status==='pending');
+  if(!np.length){toast('No pending fees!','success');return;}
+  np.forEach((f,i)=>{
+    const ph=tenants[f.tenantId]?.phone; if(!ph)return;
+    const link=makeUPILink(f.amount,`Maintenance Fee ${f.flat} ${f.name} ${m}`);
+    const msg=encodeURIComponent(`Dear ${f.name},\n\nPayment reminder: ₹${f.amount} for ${m} due by ${f.dueDate}.\n\n📲 Pay via UPI:\n${link}\n\n— ${settings.buildingName} Management`);
+    setTimeout(()=>window.open(`https://wa.me/91${ph}?text=${msg}`,'_blank'),i*900);
+  });
+  toast(`Opening WhatsApp for ${np.length} tenants...`,'success');
+};
+function renderReminderList(){
+  const el=document.getElementById('reminder-list'); if(!el)return;
+  const m=document.getElementById('remind-month-sel')?.value||currMonth();
+  const np=Object.values(fees).filter(f=>f.month===m&&f.status==='pending');
+  el.innerHTML=np.length?np.map(f=>{
+    const ph=tenants[f.tenantId]?.phone||'—';
+    return`<div class="sched-row"><div style="flex:1"><strong>${f.flat}</strong> — ${f.name}<br><span style="color:var(--muted);font-size:12px">${ph} · ₹${f.amount}</span></div>
+    <button class="btn btn-wa btn-sm" onclick="sendFeeReminder('${f.month}_${f.tenantId}')">💬 WA</button>
+    <button class="btn btn-purple btn-sm" onclick="showUPIForFee('${f.month}_${f.tenantId}')">📲 QR</button></div>`;
+  }).join(''):'<p style="color:var(--muted);text-align:center;padding:20px">No pending fees this month.</p>';
+}
+
+// ── EB BILLING ─────────────────────────────────────────────
+function renderEBTable(){
+  const m=document.getElementById('eb-month-select')?.value||currMonth();
+  const rows=Object.entries(ebReadings).filter(([,r])=>r.month===m);
+  const tu=rows.reduce((s,[,r])=>s+r.units,0);
+  const tb=rows.reduce((s,[,r])=>s+r.amount,0);
+  si('eb-units',tu); si('eb-bill','₹'+tb.toLocaleString());
+  si('eb-rate-disp','₹'+settings.ebRate); si('eb-flats',rows.length);
+  document.getElementById('eb-body').innerHTML=rows.length?rows.map(([id,r])=>`
+    <tr><td><strong>${r.flat}</strong></td>
+    <td>${Object.values(tenants).find(t=>t.flat===r.flat)?.name||'—'}</td>
+    <td style="font-family:var(--mono)">${r.prev}</td>
+    <td style="font-family:var(--mono)">${r.curr}</td>
+    <td style="font-family:var(--mono);color:var(--warn)">${r.units}</td>
+    <td>₹${r.amount.toLocaleString()}</td>
+    <td><span class="pill ${r.status==='paid'?'pill-green':'pill-red'}">${r.status}</span></td>
+    <td style="display:flex;gap:5px">
+      ${r.status!=='paid'?`<button class="btn btn-primary btn-sm" onclick="markEBPaid('${id}')">Paid</button>`:''}
+      <button class="btn btn-danger btn-sm" onclick="delEB('${id}')">Del</button>
+    </td></tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">No readings this month.</td></tr>';
+}
+window.saveEBReading=function(){
+  const flat=document.getElementById('eb-flat-sel').value;
+  const month=document.getElementById('eb-month-inp').value||currMonth();
+  const prev=+document.getElementById('eb-prev').value||0;
+  const curr=+document.getElementById('eb-curr').value||0;
+  if(!flat||curr<=prev){toast('Check flat and readings','error');return;}
+  const units=curr-prev, amount=Math.round(units*settings.ebRate);
+  const id='eb_'+flat.replace(/\W/g,'_')+'_'+month;
+  const rec={flat,month,prev,curr,units,amount,status:'pending'};
+  ebReadings[id]=rec; dbSet('ebReadings/'+id,rec);
+  closeModal('modal-eb-reading'); toast('EB reading saved ✓','success');
+  if(demoMode)renderAll();
+};
+window.markEBPaid=function(id){
+  ebReadings[id].status='paid'; dbSet('ebReadings/'+id+'/status','paid');
+  const r=ebReadings[id];
+  const je={date:new Date().toISOString().slice(0,10),narration:`EB bill paid — ${r.flat} ${r.month}`,debit:'acc3',credit:'acc2',amount:r.amount,type:'income',ref:'EB-'+Date.now().toString().slice(-5)};
+  dbPush('journal',je);
+  if(demoMode){journalEntries['je'+Date.now()]=je;renderAll();}
+  toast('EB paid + journal entry posted ✓','success');
+};
+window.delEB=function(id){
+  dbRemove('ebReadings/'+id);
+  if(demoMode){delete ebReadings[id];renderAll();}
+};
+window.exportEB=function(){
+  const m=document.getElementById('eb-month-select')?.value||currMonth();
+  const rows=Object.values(ebReadings).filter(r=>r.month===m);
+  let csv='Flat,Prev,Curr,Units,Amount,Status\n';
+  rows.forEach(r=>{csv+=`${r.flat},${r.prev},${r.curr},${r.units},${r.amount},${r.status}\n`;});
+  downloadFile('eb_'+m+'.csv',csv,'text/csv');
+};
+window.ebBulkWhatsApp=function(){
+  const m=document.getElementById('eb-month-select')?.value||currMonth();
+  const rows=Object.values(ebReadings).filter(r=>r.month===m&&r.status!=='paid');
+  rows.forEach((r,i)=>{
+    const t=Object.values(tenants).find(t=>t.flat===r.flat); if(!t?.phone)return;
+    const link=makeUPILink(r.amount,`EB Bill ${r.flat} ${m}`);
+    const msg=encodeURIComponent(`Dear ${t.name},\n\nYour EB bill for ${m}: ${r.units} units = ₹${r.amount}.\n\n📲 Pay via UPI:\n${link}\n\n— ${settings.buildingName}`);
+    setTimeout(()=>window.open(`https://wa.me/91${t.phone}?text=${msg}`,'_blank'),i*900);
+  });
+  toast(`Sending EB bills to ${rows.length} tenants...`,'success');
+};
+
+// ── WATER TANKS ────────────────────────────────────────────
+function tankCardHTML(t){
+  const lvl=Math.min(100,Math.max(0,t.level||0));
+  const col=lvl<25?'var(--water-low)':lvl<50?'var(--water-mid)':'var(--water-ok)';
+  const st=lvl<25?'🔴 Critical':lvl<50?'🟡 Low':'🟢 Good';
+  const lit=Math.round(lvl/100*(t.capacity||5000));
+  const ago=t.lastUpdated?Math.round((Date.now()-t.lastUpdated)/1000):null;
+  return`<div class="tank-card">
+    <div class="tank-name">${t.name}</div>
+    <div class="tank-visual"><div class="tank-fill" style="height:${lvl}%;background:${col};opacity:.85"></div>
+    <div class="tank-bar-label">${lvl}%</div></div>
+    <div class="tank-pct" style="color:${col}">${lvl}%</div>
+    <div class="tank-meta">${st}<br>${lit.toLocaleString()} / ${(t.capacity||5000).toLocaleString()} L<br>
+    <span style="font-size:10px">${ago!==null?'Updated '+ago+'s ago':'—'}</span></div>
+  </div>`;
+}
+function renderTanks(){
+  const wg=document.getElementById('water-tanks-grid');
+  const dt=document.getElementById('dashboard-tanks');
+  const html=Object.values(tanks).map(tankCardHTML).join('')||'<p style="color:var(--muted)">No tanks yet.</p>';
+  if(wg)wg.innerHTML=html; if(dt)dt.innerHTML=html;
+  const ac=document.getElementById('arduino-code');
+  if(ac)ac.textContent=`// ApartmentOS Water Level Sensor
+// Hardware: ESP8266 NodeMCU + HC-SR04 Ultrasonic Sensor (~Rs.380 total)
+// Wiring  : TRIG->D1  ECHO->D2  VCC->5V  GND->GND
+#include <ESP8266WiFi.h>
+#include <FirebaseESP8266.h>
+#define WIFI_SSID     "YOUR_WIFI_NAME"
+#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+#define FIREBASE_HOST "apartment-2546a-default-rtdb.firebaseio.com"
+#define FIREBASE_AUTH "YOUR_DATABASE_SECRET"
+#define TRIG_PIN D1
+#define ECHO_PIN D2
+#define TANK_ID  "tank1"
+#define TANK_HEIGHT_CM 200
+FirebaseData fbData; FirebaseConfig config; FirebaseAuth auth;
+void setup(){
+  Serial.begin(115200);
+  pinMode(TRIG_PIN,OUTPUT); pinMode(ECHO_PIN,INPUT);
+  WiFi.begin(WIFI_SSID,WIFI_PASSWORD);
+  while(WiFi.status()!=WL_CONNECTED){delay(500);}
+  config.host=FIREBASE_HOST;
+  config.signer.tokens.legacy_token=FIREBASE_AUTH;
+  Firebase.begin(&config,&auth); Firebase.reconnectWiFi(true);
+}
+void loop(){
+  digitalWrite(TRIG_PIN,LOW); delayMicroseconds(2);
+  digitalWrite(TRIG_PIN,HIGH); delayMicroseconds(10);
+  digitalWrite(TRIG_PIN,LOW);
+  int dist=pulseIn(ECHO_PIN,HIGH)*0.034/2;
+  int lvl=constrain(100-(dist*100/TANK_HEIGHT_CM),0,100);
+  Firebase.setInt(fbData,"/water_tanks/"+String(TANK_ID)+"/level",lvl);
+  Firebase.setInt(fbData,"/water_tanks/"+String(TANK_ID)+"/lastUpdated",(int)(millis()/1000));
+  delay(30000);
+}`;
+}
+window.addTank=function(){
+  const name=v('wt-name'),cap=+v('wt-cap')||5000,loc=v('wt-loc');
+  if(!name){toast('Enter tank name','error');return;}
+  const id='tank'+Date.now();
+  const tank={name,capacity:cap,location:loc,level:0,lastUpdated:Date.now()};
+  tanks[id]=tank; dbSet('tanks/'+id,tank);
+  closeModal('modal-add-tank'); toast('Tank added ✓','success');
+  if(demoMode)renderAll();
+};
+window.simulateWater=function(){
+  Object.keys(tanks).forEach(id=>{
+    tanks[id].level=Math.round(Math.random()*100);
+    tanks[id].lastUpdated=Date.now();
+    dbSet('tanks/'+id+'/level',tanks[id].level);
+  });
+  renderTanks(); toast('Levels simulated','success');
+};
+
+// ── ACCOUNTING ─────────────────────────────────────────────
+window.saveAccount=function(){
+  const acc={name:v('acc-name'),type:v('acc-type'),opening:+v('acc-opening')||0,balType:v('acc-bal-type')};
+  if(!acc.name){toast('Enter account name','error');return;}
+  const id='acc'+Date.now();
+  accounts[id]=acc; dbSet('accounts/'+id,acc);
+  closeModal('modal-add-account'); toast('Account added ✓','success');
+  if(demoMode)renderAll();
+};
+function getAccountBalance(id){
+  const acc=accounts[id]; if(!acc)return 0;
+  let bal=acc.opening*(acc.balType==='debit'?1:-1);
+  Object.values(journalEntries).forEach(j=>{
+    if(j.debit===id) bal+=j.amount;
+    if(j.credit===id) bal-=j.amount;
+  });
+  return bal;
+}
+function calcNetBalance(){
+  const income=Object.entries(accounts).filter(([,a])=>a.type==='income').reduce((s,[id])=>s+Math.abs(getAccountBalance(id)),0);
+  const expense=Object.entries(accounts).filter(([,a])=>a.type==='expense').reduce((s,[id])=>s+Math.abs(getAccountBalance(id)),0);
+  return income-expense;
+}
+function renderLedger(){
+  const el=document.getElementById('ledger-container'); if(!el)return;
+  const typeOrder=['asset','income','expense','liability','equity'];
+  const grouped={};
+  Object.entries(accounts).forEach(([id,acc])=>{
+    if(!grouped[acc.type])grouped[acc.type]=[];
+    grouped[acc.type].push({id,acc});
+  });
+  el.innerHTML=typeOrder.map(type=>{
+    const items=grouped[type]||[];
+    if(!items.length)return'';
+    return`<div class="panel" style="margin-bottom:12px">
+      <div class="panel-header"><h2>${type.toUpperCase()} ACCOUNTS</h2></div>
+      ${items.map(({id,acc})=>{
+        const bal=getAccountBalance(id);
+        const entries=Object.values(journalEntries).filter(j=>j.debit===id||j.credit===id);
+        return`<div class="ledger-item">
+          <div class="ledger-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+            <span class="ledger-name">${acc.name}</span>
+            <span class="ledger-bal ${bal>=0?'text-green':'text-red'}">₹${Math.abs(bal).toLocaleString()} ${bal>=0?'Dr':'Cr'}</span>
+          </div>
+          <div class="ledger-entries" style="display:none">
+            <div class="ledger-entry" style="background:var(--surface2);font-weight:600;font-size:11px;color:var(--muted)">
+              <span>Date</span><span>Narration</span><span>Debit</span><span>Credit</span><span>Balance</span>
+            </div>
+            ${entries.map(j=>{
+              const dr=j.debit===id?j.amount:0, cr=j.credit===id?j.amount:0;
+              return`<div class="ledger-entry">
+                <span style="font-family:var(--mono);font-size:11px">${j.date}</span>
+                <span>${j.narration}</span>
+                <span style="color:var(--danger)">${dr?'₹'+dr.toLocaleString():''}</span>
+                <span style="color:var(--accent)">${cr?'₹'+cr.toLocaleString():''}</span>
+                <span style="font-family:var(--mono)">₹${Math.abs(getAccountBalance(id)).toLocaleString()}</span>
+              </div>`;
+            }).join('')||'<div class="ledger-entry"><span></span><span style="color:var(--muted)">No transactions yet</span></div>'}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+window.exportLedger=function(){
+  let csv='Account,Type,Date,Narration,Debit,Credit,Balance\n';
+  Object.entries(accounts).forEach(([id,acc])=>{
+    const entries=Object.values(journalEntries).filter(j=>j.debit===id||j.credit===id);
+    entries.forEach(j=>{
+      const dr=j.debit===id?j.amount:0, cr=j.credit===id?j.amount:0;
+      csv+=`${acc.name},${acc.type},${j.date},"${j.narration}",${dr},${cr},${getAccountBalance(id)}\n`;
+    });
+  });
+  downloadFile('ledger.csv',csv,'text/csv');
+};
+window.saveJournalEntry=function(){
+  const je={date:v('je-date')||new Date().toISOString().slice(0,10),narration:v('je-narration'),debit:v('je-debit'),credit:v('je-credit'),amount:+v('je-amount')||0,type:v('je-type'),ref:v('je-ref')||'JE-'+Date.now().toString().slice(-5)};
+  if(!je.narration||!je.amount){toast('Fill narration and amount','error');return;}
+  dbPush('journal',je);
+  if(demoMode){journalEntries['je'+Date.now()]=je;renderAll();}
+  closeModal('modal-journal-entry'); toast('Journal entry posted ✓','success');
+};
+function renderJournal(){
+  const el=document.getElementById('journal-body'); if(!el)return;
+  const arr=Object.entries(journalEntries).sort((a,b)=>b[1].date>a[1].date?1:-1);
+  el.innerHTML=arr.length?arr.map(([id,j])=>`
+    <tr>
+      <td style="font-family:var(--mono);font-size:11px">${j.date}</td>
+      <td>${j.narration}</td>
+      <td style="color:var(--danger)">${accounts[j.debit]?.name||j.debit||'—'}</td>
+      <td style="color:var(--accent)">${accounts[j.credit]?.name||j.credit||'—'}</td>
+      <td style="font-family:var(--mono)">₹${(j.amount||0).toLocaleString()}</td>
+      <td><span class="pill ${j.type==='income'?'pill-green':j.type==='expense'?'pill-red':'pill-blue'}">${j.type||'—'}</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="delJE('${id}')">Del</button></td>
+    </tr>`).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No journal entries yet.</td></tr>';
+}
+window.delJE=function(id){
+  dbRemove('journal/'+id);
+  if(demoMode){delete journalEntries[id];renderAll();}
+};
+window.exportJournal=function(){
+  let csv='Date,Narration,Debit,Credit,Amount,Type,Ref\n';
+  Object.values(journalEntries).forEach(j=>{
+    csv+=`${j.date},"${j.narration}",${accounts[j.debit]?.name||j.debit},${accounts[j.credit]?.name||j.credit},${j.amount},${j.type||''},${j.ref||''}\n`;
+  });
+  downloadFile('journal.csv',csv,'text/csv');
+};
+function renderPL(){
+  const el=document.getElementById('pl-container'); if(!el)return;
+  const income=Object.entries(accounts).filter(([,a])=>a.type==='income');
+  const expense=Object.entries(accounts).filter(([,a])=>a.type==='expense');
+  const totInc=income.reduce((s,[id])=>s+Math.abs(getAccountBalance(id)),0);
+  const totExp=expense.reduce((s,[id])=>s+Math.abs(getAccountBalance(id)),0);
+  const profit=totInc-totExp;
+  el.innerHTML=`<div class="panel"><div class="panel-body" style="padding:0">
+    <div class="pl-row head"><span>Income</span><span>Amount</span></div>
+    ${income.map(([id,a])=>`<div class="pl-row sub"><span>${a.name}</span><span>₹${Math.abs(getAccountBalance(id)).toLocaleString()}</span></div>`).join('')}
+    <div class="pl-row total"><span>Total Income</span><span style="color:var(--accent)">₹${totInc.toLocaleString()}</span></div>
+    <div class="pl-row head" style="margin-top:8px"><span>Expenses</span><span>Amount</span></div>
+    ${expense.map(([id,a])=>`<div class="pl-row sub"><span>${a.name}</span><span>₹${Math.abs(getAccountBalance(id)).toLocaleString()}</span></div>`).join('')}
+    <div class="pl-row total"><span>Total Expenses</span><span style="color:var(--danger)">₹${totExp.toLocaleString()}</span></div>
+    <div class="pl-row grand" style="padding:12px 14px;margin:12px">
+      <span>Net ${profit>=0?'Surplus':'Deficit'}</span>
+      <span style="font-size:18px;font-family:var(--mono)">₹${Math.abs(profit).toLocaleString()}</span>
+    </div>
+  </div></div>`;
+}
+window.exportPL=function(){
+  const income=Object.entries(accounts).filter(([,a])=>a.type==='income');
+  const expense=Object.entries(accounts).filter(([,a])=>a.type==='expense');
+  let csv='Type,Account,Amount\n';
+  income.forEach(([id,a])=>{csv+=`Income,${a.name},${Math.abs(getAccountBalance(id))}\n`;});
+  expense.forEach(([id,a])=>{csv+=`Expense,${a.name},${Math.abs(getAccountBalance(id))}\n`;});
+  downloadFile('pl_report.csv',csv,'text/csv');
+};
+function renderBS(){
+  const el=document.getElementById('bs-container'); if(!el)return;
+  const assets=Object.entries(accounts).filter(([,a])=>a.type==='asset');
+  const liabilities=Object.entries(accounts).filter(([,a])=>a.type==='liability');
+  const equity=Object.entries(accounts).filter(([,a])=>a.type==='equity');
+  const income=Object.entries(accounts).filter(([,a])=>a.type==='income').reduce((s,[id])=>s+Math.abs(getAccountBalance(id)),0);
+  const expense=Object.entries(accounts).filter(([,a])=>a.type==='expense').reduce((s,[id])=>s+Math.abs(getAccountBalance(id)),0);
+  const retained=income-expense;
+  const totAssets=assets.reduce((s,[id])=>s+Math.abs(getAccountBalance(id)),0);
+  const totLiabEq=liabilities.reduce((s,[id])=>s+Math.abs(getAccountBalance(id)),0)+equity.reduce((s,[id])=>s+Math.abs(getAccountBalance(id)),0)+retained;
+  el.innerHTML=`<div class="bs-grid">
+    <div class="bs-side">
+      <div class="bs-head">Assets</div>
+      ${assets.map(([id,a])=>`<div class="bs-row"><span>${a.name}</span><span>₹${Math.abs(getAccountBalance(id)).toLocaleString()}</span></div>`).join('')}
+      <div class="bs-row total"><span>Total Assets</span><span>₹${totAssets.toLocaleString()}</span></div>
+    </div>
+    <div class="bs-side">
+      <div class="bs-head">Liabilities &amp; Equity</div>
+      ${liabilities.map(([id,a])=>`<div class="bs-row"><span>${a.name}</span><span>₹${Math.abs(getAccountBalance(id)).toLocaleString()}</span></div>`).join('')}
+      ${equity.map(([id,a])=>`<div class="bs-row"><span>${a.name}</span><span>₹${Math.abs(getAccountBalance(id)).toLocaleString()}</span></div>`).join('')}
+      <div class="bs-row"><span style="color:var(--muted)">Retained Surplus</span><span>₹${retained.toLocaleString()}</span></div>
+      <div class="bs-row total"><span>Total Liab + Equity</span><span>₹${totLiabEq.toLocaleString()}</span></div>
+    </div>
+  </div>`;
+}
+window.exportBS=function(){
+  let csv='Side,Account,Amount\n';
+  Object.entries(accounts).filter(([,a])=>a.type==='asset').forEach(([id,a])=>{csv+=`Asset,${a.name},${Math.abs(getAccountBalance(id))}\n`;});
+  Object.entries(accounts).filter(([,a])=>['liability','equity'].includes(a.type)).forEach(([id,a])=>{csv+=`${a.type},${a.name},${Math.abs(getAccountBalance(id))}\n`;});
+  downloadFile('balance_sheet.csv',csv,'text/csv');
+};
+
+// ── TICKETS ────────────────────────────────────────────────
+window.saveTicket=function(){
+  const t={flat:v('mt-flat'),category:v('mt-cat'),title:v('mt-title'),desc:v('mt-desc'),priority:v('mt-priority'),by:v('mt-by'),status:'open',date:new Date().toISOString()};
+  if(!t.title){toast('Enter issue title','error');return;}
+  dbPush('tickets',t);
+  if(demoMode){tickets['tk'+Date.now()]=t;renderAll();}
+  closeModal('modal-add-ticket'); toast('Ticket created ✓','success');
+};
+window.updateTicketStatus=function(id,status){
+  dbSet('tickets/'+id+'/status',status);
+  if(demoMode){tickets[id].status=status;renderAll();}
+};
+window.deleteTicket=function(id){
+  if(!confirm('Delete ticket?'))return;
+  dbRemove('tickets/'+id);
+  if(demoMode){delete tickets[id];renderAll();}
+};
+function renderTickets(){
+  const fil=document.getElementById('ticket-filter')?.value||'all';
+  const pc={low:'pill-blue',medium:'pill-warn',high:'pill-red',urgent:'pill-red'};
+  const arr=Object.entries(tickets).filter(([,t])=>fil==='all'||t.status===fil);
+  document.getElementById('tickets-container').innerHTML=arr.length?arr.map(([id,t])=>`
+    <div class="ticket-item">
+      <div style="display:flex;gap:7px;align-items:flex-start;flex-wrap:wrap;margin-bottom:6px">
+        <span class="pill ${pc[t.priority]||'pill-blue'}">${t.priority}</span>
+        <span class="pill ${sPill(t.status)}">${t.status}</span>
+        <span class="pill pill-blue">${t.category}</span>
+        <span style="color:var(--muted);font-size:11px;margin-left:auto">${t.date?.slice(0,10)||'—'}</span>
+      </div>
+      <div class="ticket-title">${t.title}</div>
+      <div class="ticket-meta">Flat ${t.flat} · ${t.by||'—'}</div>
+      ${t.desc?`<div style="color:var(--muted);font-size:12px;margin-top:5px">${t.desc}</div>`:''}
+      <div class="ticket-footer">
+        <select class="search-bar" style="font-size:12px;padding:4px 8px" onchange="updateTicketStatus('${id}',this.value)">
+          <option ${t.status==='open'?'selected':''} value="open">Open</option>
+          <option ${t.status==='in-progress'?'selected':''} value="in-progress">In Progress</option>
+          <option ${t.status==='resolved'?'selected':''} value="resolved">Resolved</option>
+        </select>
+        <button class="btn btn-danger btn-sm" onclick="deleteTicket('${id}')">Delete</button>
+      </div>
+    </div>`).join(''):'<p style="text-align:center;color:var(--muted);padding:40px">No tickets found.</p>';
+}
+
+// ── NOTICES ────────────────────────────────────────────────
+window.saveNotice=function(){
+  const n={title:v('n-title'),type:v('n-type'),date:v('n-date')||new Date().toISOString().slice(0,10),body:v('n-body'),postedOn:new Date().toISOString()};
+  if(!n.title||!n.body){toast('Fill title and message','error');return;}
+  dbPush('notices',n);
+  if(demoMode){noticesList['n'+Date.now()]=n;renderAll();}
+  closeModal('modal-add-notice'); toast('Notice posted ✓','success');
+};
+window.deleteNotice=function(id){
+  dbRemove('notices/'+id);
+  if(demoMode){delete noticesList[id];renderAll();}
+};
+function renderNotices(){
+  const tc={Emergency:'pill-red',General:'pill-green','Fee Reminder':'pill-warn','Water Supply':'pill-blue',Maintenance:'pill-warn',Event:'pill-blue'};
+  document.getElementById('notices-container').innerHTML=Object.entries(noticesList).reverse().map(([id,n])=>`
+    <div class="panel" style="margin-bottom:12px">
+      <div class="panel-header"><h2>${n.title}</h2>
+        <div class="ml"><span class="pill ${tc[n.type]||'pill-blue'}">${n.type}</span>
+        <span style="color:var(--muted);font-size:12px">${n.date}</span>
+        <button class="btn btn-danger btn-sm" onclick="deleteNotice('${id}')">Del</button></div>
+      </div>
+      <div class="panel-body" style="white-space:pre-line;color:var(--muted);line-height:1.7">${n.body}</div>
+    </div>`).join('')||'<p style="text-align:center;color:var(--muted);padding:40px">No notices yet.</p>';
+}
+
+// ── SETTINGS ───────────────────────────────────────────────
+window.saveSettings=function(){
+  settings={buildingName:v('set-bname')||'Our Apartment',maintenanceFee:+v('set-fee')||1500,ebRate:+v('set-eb-rate')||6.5,dueDayOfMonth:+v('set-due-day')||5,adminPhone:v('set-phone'),upiId:v('set-upi'),upiName:v('set-upi-name')||'Apartment Maintenance',address:v('set-address')};
+  dbSet('settings',settings);
+  toast('Settings saved ✓','success');
+  loadSettings();
+};
+function loadSettings(){
+  const s=id=>document.getElementById(id);
+  if(s('set-bname'))s('set-bname').value=settings.buildingName||'';
+  if(s('set-fee'))s('set-fee').value=settings.maintenanceFee||'';
+  if(s('set-eb-rate'))s('set-eb-rate').value=settings.ebRate||'';
+  if(s('set-due-day'))s('set-due-day').value=settings.dueDayOfMonth||'';
+  if(s('set-phone'))s('set-phone').value=settings.adminPhone||'';
+  if(s('set-upi'))s('set-upi').value=settings.upiId||'';
+  if(s('set-upi-name'))s('set-upi-name').value=settings.upiName||'';
+  if(s('set-address'))s('set-address').value=settings.address||'';
+  si('eb-rate-disp','₹'+settings.ebRate);
+  updateUPIIdDisplay();
+  if(settings.buildingName){const bn=document.querySelector('.brand-name');if(bn)bn.textContent=settings.buildingName;}
+}
+
+// ── NAV & UTILS ────────────────────────────────────────────
+window.showPage=function(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const pg=document.getElementById('page-'+name); if(pg)pg.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>{if(n.getAttribute('onclick')?.includes("'"+name+"'"))n.classList.add('active');});
+  document.getElementById('page-title').textContent=name.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+  populateMonthSelects(); populateFlatSelects(); populateAccountSelects();
+};
+window.openModal=id=>document.getElementById(id).classList.add('open');
+window.closeModal=id=>document.getElementById(id).classList.remove('open');
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+function populateMonthSelects(){
+  const ms=[];for(let i=0;i<6;i++){const d=new Date();d.setMonth(d.getMonth()-i);ms.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));}
+  ['fee-month-select','np-month-select','eb-month-select','remind-month-sel'].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    const cur=el.value||currMonth();
+    el.innerHTML=ms.map(m=>`<option value="${m}" ${m===cur?'selected':''}>${m}</option>`).join('');
+  });
+  ['pl-year','bs-year'].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    const yr=new Date().getFullYear();
+    el.innerHTML=[yr,yr-1,yr-2].map(y=>`<option value="${y}">${y}-${y+1}</option>`).join('');
+  });
+  const em=document.getElementById('eb-month-inp'); if(em&&!em.value)em.value=currMonth();
+  const um=document.getElementById('upi-month'); if(um&&!um.value)um.value=currMonth();
+  const nd=document.getElementById('n-date'); if(nd&&!nd.value)nd.value=new Date().toISOString().slice(0,10);
+  const jd=document.getElementById('je-date'); if(jd&&!jd.value)jd.value=new Date().toISOString().slice(0,10);
+}
+function populateFlatSelects(){
+  const flats=Object.values(tenants).filter(t=>t.status==='active').map(t=>t.flat).sort();
+  ['eb-flat-sel','upi-flat-sel'].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    el.innerHTML=flats.map(f=>`<option value="${f}">${f}</option>`).join('');
+  });
+}
+function populateAccountSelects(){
+  const opts=Object.entries(accounts).map(([id,a])=>`<option value="${id}">${a.name}</option>`).join('');
+  ['je-debit','je-credit'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
+}
+function updateBadges(){
+  const m=currMonth();
+  const unp=Object.values(fees).filter(f=>f.month===m&&f.status==='pending').length;
+  const opn=Object.values(tickets).filter(t=>t.status!=='resolved').length;
+  const bu=document.getElementById('badge-unpaid'),bm=document.getElementById('badge-maint');
+  if(bu){bu.textContent=unp;bu.style.display=unp?'':'none';}
+  if(bm){bm.textContent=opn;bm.style.display=opn?'':'none';}
+}
+function currMonth(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function si(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
+function v(id){return document.getElementById(id)?.value||'';}
+function sPill(s){return s==='paid'||s==='resolved'||s==='active'?'pill-green':s==='pending'||s==='open'?'pill-red':s==='in-progress'?'pill-warn':'pill-blue';}
+function downloadFile(name,content,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();}
+function toast(msg,type='success'){const el=document.getElementById('toast');el.textContent=msg;el.className='show '+type;setTimeout(()=>el.className='',3200);}
+setInterval(()=>si('topbar-time',new Date().toLocaleTimeString()),1000);
+populateMonthSelects();
+</script>
+</body>
+</html>
